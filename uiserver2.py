@@ -13,7 +13,7 @@ import pylab
 from matplotlib import mlab
 import sqlite3
 import time
-import matplotlib
+import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
@@ -168,7 +168,9 @@ class Ui_Form(object):
     def addGraph(self):
          # a figure instance to plot on
         self.figure = Figure()
-        self.figure.suptitle('Client Statistics')
+        self.figure.suptitle('Client Resource Usage')
+        # self.figure.tight_layout()
+        # self.figure.set_grid(True)
 
         # this is the Canvas Widget that displays the `figure`
         # it takes the `figure` instance as a parameter to __init__
@@ -178,77 +180,40 @@ class Ui_Form(object):
         self.ax1 = self.figure.add_subplot(311)
         self.ax2 = self.figure.add_subplot(312)
         self.ax3 = self.figure.add_subplot(313)
-        self.build_cpu()
-        self.build_memory()
-        self.build_du()
  
 
-    def build_cpu(self):
-        if self.active_client == UI_FORM_NO_ACTIVE_CLIENT:
-            return
-
-        xmin = 0
-        xmax = 10
-        dx = 1
-        xlist = mlab.frange (xmin, xmax, dx)
-
-        cur_time = int(time.time())
-        ylist_us_cpu = [self.fetch_data_from_db (x, cur_time, self.active_client, 'user_cpu') for x in xlist]
-        ylist_system_cpu = [self.fetch_data_from_db (x, cur_time, self.active_client, 'system_cpu') for x in xlist]
-        ylist_idle_cpu = [self.fetch_data_from_db (x, cur_time, self.active_client, 'idle_cpu') for x in xlist]
-
-        self.ax1.set_title("CPU Usage")
-        self.ax1.set_xlabel("Sec")
-        self.ax1.set_ylabel("Sec")
+    def build_cpu(self, xlist, ylist_us_cpu, ylist_system_cpu, ylist_idle_cpu):
+        # self.ax1.set_title("CPU Usage")
+        # self.ax1.set_xlabel("Sec")
+        self.ax1.set_ylabel("CPU Usage, %")
+        # self.ax1.hist(xlist, ylist_us_cpu, 'g', label='user')
+        # self.ax1.hist(xlist, ylist_system_cpu, 'b:', label='system')
+        # self.ax1.hist(xlist, ylist_idle_cpu, 'r--', label='idle')
         self.ax1.plot(xlist, ylist_us_cpu, 'g', label='user')
         self.ax1.plot(xlist, ylist_system_cpu, 'b:', label='system')
         self.ax1.plot(xlist, ylist_idle_cpu, 'r--', label='idle')
-        legend = self.ax1.legend(loc='upper center', shadow=True)
+        legend = self.ax1.legend(loc='upper left', shadow=True)
 
-    def build_memory(self):
-        if self.active_client == UI_FORM_NO_ACTIVE_CLIENT:
-            return
-
-        xmin = 0
-        xmax = 10
-        dx = 1
-        xlist = mlab.frange (xmin, xmax, dx)
-
-        cur_time = int(time.time())
-        ylist_total_memory = [self.fetch_data_from_db (x, cur_time, self.active_client, 'total_memory') for x in xlist]
-        ylist_available_memory= [self.fetch_data_from_db (x, cur_time, self.active_client, 'available_memory') for x in xlist]
-        ylist_used_memory = [self.fetch_data_from_db (x, cur_time, self.active_client, 'used_memory') for x in xlist]
-        
-        self.ax2.set_title("Memory Usage")
-        self.ax2.set_xlabel("Sec")
-        self.ax2.set_ylabel("Bytes")
+    def build_memory(self, xlist, ylist_total_memory, ylist_available_memory, ylist_used_memory):
+        # self.ax2.set_title("Memory Usage")
+        # self.ax2.set_xlabel("Sec")
+        self.ax2.set_ylabel("Memory Usage, Mb")
         self.ax2.plot(xlist, ylist_total_memory, 'g', label='total')
         self.ax2.plot(xlist, ylist_available_memory, 'r--', label='avail')
         self.ax2.plot(xlist, ylist_used_memory, 'b:', label='used')
-        legend = self.ax2.legend(loc='upper center', shadow=True)
+        legend = self.ax2.legend(loc='upper left', shadow=True)
     
-    def build_du(self):
-        if self.active_client == UI_FORM_NO_ACTIVE_CLIENT:
-            return
-        xmin = 0
-        xmax = 10
-        dx = 1
-        xlist = mlab.frange (xmin, xmax, dx)
-        cur_time = int(time.time())
-        ylist_total_d_u = [self.fetch_data_from_db (x, cur_time, self.active_client, 'total_d_u') for x in xlist]
-        ylist_used_d_u= [self.fetch_data_from_db (x, cur_time, self.active_client, 'used_d_u') for x in xlist]
-        ylist_free_d_u = [self.fetch_data_from_db (x, cur_time, self.active_client, 'free_d_u') for x in xlist]
- 
-        self.ax3.set_title("Disk Usage")
+    def build_du(self, xlist, ylist_total_d_u, ylist_used_d_u, ylist_free_d_u):
+        # self.ax3.set_title("Disk Usage")
         self.ax3.set_xlabel("Sec")
-        self.ax3.set_ylabel("Bytes")
+        self.ax3.set_ylabel("Disk Usage, Mb")
         self.ax3.plot(xlist, ylist_total_d_u, 'g', label='total')
         self.ax3.plot(xlist, ylist_used_d_u, 'b:', label='used')
         self.ax3.plot(xlist, ylist_free_d_u, 'r--', label='free')
-        legend = self.ax3.legend(loc='upper center', shadow=True)
+        legend = self.ax3.legend(loc='upper left', shadow=True)
 
 
-
+    #draft version without optimization: 3600 *9 sql requests
     def fetch_data_from_db (self, x, cur_time, cl_id, field_name):
         x1 = cur_time - x
         cursor.execute("SELECT " + field_name + " FROM stat_data WHERE client_id =" + cl_id + " AND stat_time =" + str(x1))
@@ -258,16 +223,126 @@ class Ui_Form(object):
             return 0
         return (y[0])
 
+    #first optimisation version: 3600 sql requests
+    def fetch_all_data_from_db (self, x, cur_time, cl_id):
+        x1 = cur_time - x
+        cursor.execute("SELECT * FROM stat_data WHERE client_id =" + cl_id + " AND stat_time =" + str(x1))
+        y = cursor.fetchone()
+
+        if type(y) == type(None):
+            z = []
+            return z
+        return (y)
+
+    #second optimization version: 1 sql request!!!
+    def fetch_range_time_data_from_db (self, xmin_time_back, xmax_time_back, cl_id):
+        print("fetch_range_time_data_from_db(): xmax_time_back={} xmin_time_back={}".format(xmax_time_back, xmin_time_back))
+        cursor.execute("SELECT * FROM stat_data WHERE client_id =" + cl_id + " AND stat_time BETWEEN " + str(xmax_time_back) + " AND " + str(xmin_time_back))
+        y = cursor.fetchall()
+        print("fetch_range_time_data_from_db(): len={}".format(len(y)))
+        return (y)
+
+
     def update_clients(self):
         self.addClients()
 
     def update_graph(self):
+        if self.active_client == UI_FORM_NO_ACTIVE_CLIENT:
+            return
+
         self.ax1.clear()
         self.ax2.clear()
         self.ax3.clear()
-        self.build_cpu()
-        self.build_memory()
-        self.build_du()
+
+        xmin = 0
+        xmax = 3600
+        dx = 1
+
+        cur_time = int(time.time())
+        xmax_time_back = cur_time - xmax
+        xmin_time_back = cur_time - xmin
+
+        next_record = []
+        ylist_us_cpu = []
+        ylist_system_cpu = []
+        ylist_idle_cpu = []
+        ylist_total_memory = []
+        ylist_available_memory = []
+        ylist_used_memory = []
+        ylist_total_d_u = []
+        ylist_used_d_u = []
+        ylist_free_d_u = []
+
+        records = self.fetch_range_time_data_from_db(xmin_time_back, xmax_time_back, self.active_client)
+        #for x in xlist:
+            #next_record = self.fetch_all_data_from_db(x, cur_time, self.active_client)
+
+        counted_records=0
+        curx_time = xmax_time_back
+        data_aproximation = 0
+        for next_record in records:
+            if curx_time > xmin_time_back:
+                 break
+            #print("Next record={}".format(next_record))
+            #print("curx_time={}",curx_time)
+            #print("counted_records={}".format(counted_records))
+            for i in range(curx_time, next_record[1]+1):
+                #print("i in range={}",i)
+                if next_record[1] == i or data_aproximation == 1:
+                    #print("update_graph: rec +++++++++++++++++")
+                    ylist_us_cpu.append(next_record[2])
+                    ylist_system_cpu.append(next_record[3])
+                    ylist_idle_cpu.append(next_record[4])
+                    ylist_total_memory.append(next_record[5])
+                    ylist_available_memory.append(next_record[6])
+                    ylist_used_memory.append(next_record[7])
+                    ylist_total_d_u.append(next_record[8])
+                    ylist_used_d_u.append(next_record[9])
+                    ylist_free_d_u.append(next_record[10])
+                    counted_records+=1
+                    #data aproximation is requied to avoid droping graph to 0 if stat data
+                    #was skiped because of time border condition overlap
+                    if data_aproximation == 0:
+                        data_aproximation = 1
+                else:
+                    #print("update_graph: not rec ---------------")
+                    ylist_us_cpu.append(0)
+                    ylist_system_cpu.append(0)
+                    ylist_idle_cpu.append(0)
+                    ylist_total_memory.append(0)
+                    ylist_available_memory.append(0)
+                    ylist_used_memory.append(0)
+                    ylist_total_d_u.append(0)
+                    ylist_used_d_u.append(0)
+                    ylist_free_d_u.append(0)
+                    counted_records+=1
+
+            curx_time = next_record[1] + 1
+
+
+        #-1 because db doesn't yet store last second when time is fetched therefore y will have less values
+        xlist = mlab.frange (xmin, counted_records-1, dx) 
+
+        self.ax1.invert_xaxis()
+        self.ax2.invert_xaxis()
+        self.ax3.invert_xaxis()
+        ylist_us_cpu = ylist_us_cpu[::-1]
+        ylist_system_cpu = ylist_system_cpu[::-1]
+        ylist_idle_cpu = ylist_idle_cpu[::-1]
+        ylist_total_memory = ylist_total_memory[::-1]
+        ylist_available_memory = ylist_available_memory[::-1]
+        ylist_used_memory = ylist_used_memory[::-1]
+        ylist_total_d_u = ylist_total_d_u[::-1]
+        ylist_used_d_u = ylist_used_d_u[::-1]
+        ylist_free_d_u = ylist_free_d_u[::-1]
+
+
+        self.build_cpu(xlist, ylist_us_cpu, ylist_system_cpu, ylist_idle_cpu)
+        self.build_memory(xlist, ylist_total_memory, ylist_available_memory, ylist_used_memory)
+        self.build_du(xlist, ylist_total_d_u, ylist_used_d_u, ylist_free_d_u)
+
+      
+
         self.canvas.draw()
 
         self.update_clients()
