@@ -8,6 +8,7 @@ import threading
 import msg
 import sys
 import logging
+import signal
 
 #Globals
 SERVER_DB_NAME = "stat.db"
@@ -19,11 +20,13 @@ SERVER_IP='127.0.0.1'
 SERVER_LISTEN_PORT=1490
 SERVER_ADDRESS= SERVER_IP + ':' + str(SERVER_LISTEN_PORT)
 PID=os.getpid()
-MAX_CLIENTS = 10
+MAX_CLIENTS = 100
+
+def handler(signum, frame): 
+    server_sock.close()
+    sys.exit(0)
 
 CLIENTS_LIST=list() 
-sqlite3.apilevel 
-server_sock=socket.socket()
 
 
 def init_sql():
@@ -55,6 +58,7 @@ def init_sql():
 
 def init_comm_thread():
     thr = threading.Thread(target=server_comm)
+    thr.daemon = True
     thr.start()
     print("init_comm_thread(): communication thread is created OK...")
     return thr
@@ -123,12 +127,18 @@ def process_data(data, client_sock,client_addr):
         logger.info("parse_data(): Finally server")
 
 #MAIN THREAD
-logger = logging.getLogger("logg")
-logger.setLevel(logging.INFO)
-fh = logging.FileHandler("logg1.log")
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-fh.setFormatter(formatter)
-logger.addHandler(fh)
-init_sql()
-comm_thr = init_comm_thread()
-comm_thr.join()
+if __name__ == '__main__':
+    sqlite3.apilevel 
+    server_sock=socket.socket()
+    server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    signal.signal(signal.SIGINT, handler)
+
+    logger = logging.getLogger("logg")
+    logger.setLevel(logging.INFO)
+    fh = logging.FileHandler("logg1.log")
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    fh.setFormatter(formatter)
+    logger.addHandler(fh)
+    init_sql()
+    comm_thr = init_comm_thread()
+    comm_thr.join()

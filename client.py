@@ -5,6 +5,8 @@ import pickle
 import time
 import os
 import msg
+import signal
+import sys
 
 SERVER_IP='127.0.0.1'
 SERVER_LISTEN_PORT=1490
@@ -12,6 +14,10 @@ STATISTIC_DATA_SEND_PAUSE = 1
 REGISTRATION_RESEND_PAUSE = 5
 REG_STATE_UNREGIESTERED = 0
 REG_STATE_REGISTERED = 1
+
+def handler(signum, frame):
+    print("Pressed Ctrl+c .....")
+    sys.exit(0)
 
 class Client():
 
@@ -91,7 +97,9 @@ class Client():
 
 
 # MAIN THREAD
-client1=Client(SERVER_LISTEN_PORT)
-client1.connection()
+if __name__ == '__main__':
+    signal.signal(signal.SIGINT, handler)
+    client1=Client(SERVER_LISTEN_PORT)
+    client1.connection()
 
 

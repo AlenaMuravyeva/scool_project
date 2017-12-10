@@ -44,10 +44,11 @@ except AttributeError:
 
 class Ui_Form(object):
     active_client = UI_FORM_NO_ACTIVE_CLIENT
-    def __init__():
-        self.ax1
-        self.ax2
-        self.ax3
+    def __init__(self):
+        pass
+        # self.ax1
+        # self.ax2
+        # self.ax3
 
 
     def setupUi(self, Form):
